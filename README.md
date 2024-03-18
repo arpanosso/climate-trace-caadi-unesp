@@ -45,3 +45,20 @@ os municípios do estado de São Paulo em fontes e sumidouros de gases,
 isso permitirá a definição das variáveis chaves para descrever as
 emissões e fornecer os subsídios necessários para a criação de
 estratégias de intervenção locais.
+
+## Carregando os pacotes
+
+``` r
+library(tidyverse)
+```
+
+## Entrada dos dados
+
+``` r
+list_rds <- list.files("data/")
+dados <- map_df(
+  list_rds,
+  ~readr::read_rds(paste0("data/",
+                          .x))
+)
+```
