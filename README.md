@@ -58,9 +58,11 @@ library(tidyverse)
 list_rds <- list.files("data/")
 dados <- map_df(
   list_rds,
-  ~readr::read_rds(paste0("data/",
-                          .x))
+  ~read_rds(paste0("data/",.x))
 )
+brazil_ids <- read_rds("data-raw/df_nome.rds")
+nomes_uf <- c(brazil_ids$nome_uf %>% unique(),"Brazil")
+abbrev_states <- brazil_ids$sigla_uf %>% unique()
 ```
 
 ## Municipios `geobr`
@@ -94,9 +96,8 @@ sp_city %>%
 ![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 ``` r
-nomes_uf = "SP"
 dados %>% 
-  filter(
+  filter(created_date < as.Date("2024-01-01"),
          year == 2022,
          gas == "co2e_100yr",
          !source_name %in% nomes_uf,
@@ -105,41 +106,45 @@ dados %>%
                             "shrubgrass-fires",
                             "forest-land-fires",
                             "wetland-fires",
-                            "removals")
+                            "removals"),
+         sector_name != "forestry_and_land_use",
+         #sub_sector == "international-aviation"
+         #source_name == "Guarulhos - Governador André Franco Montoro International Airport"
          ) %>% 
   group_by(sector_name) %>% 
   summarise(
     emission = sum(emissions_quantity, na.rm=TRUE)
   ) %>% 
-  arrange(emission)  %>% 
+  arrange(desc(emission))  %>% 
   ungroup() %>% 
-  mutate(emisison_p = emission/sum(emission)*100)
-#> # A tibble: 7 × 3
-#>   sector_name               emission emisison_p
-#>   <chr>                        <dbl>      <dbl>
-#> 1 forestry_and_land_use  -156419904.    -149.  
-#> 2 power                     1668000        1.59
-#> 3 manufacturing             8317700        7.91
-#> 4 fossil_fuel_operations   10594440.      10.1 
-#> 5 waste                    11698932.      11.1 
-#> 6 transportation           54578954.      51.9 
-#> 7 agriculture             174667725.     166.
+  mutate(emisison_acumulada = cumsum(emission))
+#> # A tibble: 6 × 3
+#>   sector_name             emission emisison_acumulada
+#>   <chr>                      <dbl>              <dbl>
+#> 1 agriculture            87547042.          87547042.
+#> 2 transportation         46802229.         134349271.
+#> 3 waste                  11698932.         146048203.
+#> 4 fossil_fuel_operations 10594440.         156642643.
+#> 5 manufacturing           8317700          164960343.
+#> 6 power                   1668000          166628343.
 ```
 
 ``` r
 dados %>% 
-  filter(
-    year == 2022,
-    gas == "co2e_100yr",
-    sector_name == "transportation",
-#    !source_name %in% nomes_uf,
-    !sub_sector %in% c("forest-land-clearing",
+  filter(created_date < as.Date("2024-01-01"),
+         year == 2022,
+         gas == "co2e_100yr",
+         !source_name %in% nomes_uf,
+         !sub_sector %in% c("forest-land-clearing",
                             "forest-land-degradation",
                             "shrubgrass-fires",
                             "forest-land-fires",
                             "wetland-fires",
-                            "removals")
-     ) %>% 
+                            "removals"),
+         sector_name != "forestry_and_land_use",
+         #sub_sector == "international-aviation"
+         #source_name == "Guarulhos - Governador André Franco Montoro International Airport"
+         )  %>% 
   group_by(source_id,source_name, sub_sector) %>% 
   summarise(
     emission = sum(emissions_quantity, na.rm=TRUE)
@@ -156,18 +161,20 @@ dados %>%
 ``` r
 library(treemapify)
 dados %>% 
-  filter(
+  filter(created_date < as.Date("2024-01-01"),
          year == 2022,
          gas == "co2e_100yr",
-         sector_name != "forestry_and_land_use",
          !source_name %in% nomes_uf,
          !sub_sector %in% c("forest-land-clearing",
                             "forest-land-degradation",
                             "shrubgrass-fires",
                             "forest-land-fires",
                             "wetland-fires",
-                            "removals")
-         ) %>% 
+                            "removals"),
+         sector_name != "forestry_and_land_use",
+         #sub_sector == "international-aviation"
+         #source_name == "Guarulhos - Governador André Franco Montoro International Airport"
+         )  %>% 
   group_by(sector_name) %>% 
   summarise(
     emission = sum(emissions_quantity, na.rm=TRUE)
@@ -186,3 +193,44 @@ dados %>%
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
+dd <- dados %>% 
+  filter(created_date < as.Date("2024-01-01"),
+         year == 2022,
+         gas == "co2e_100yr",
+         !source_name %in% nomes_uf,
+         !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals"),
+         # sector_name != "forestry_and_land_use",
+         #sub_sector == "international-aviation"
+         #source_name == "Guarulhos - Governador André Franco Montoro International Airport"
+         )  %>% 
+  # group_by(city_ref,sector_name,sub_sector) %>% 
+  group_by(city_ref) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  )
+sp_city %>% 
+  inner_join( dd %>% 
+    rename(name_muni = city_ref),
+    by="name_muni"
+  ) %>% 
+  mutate(class_emission = if_else(emission<0,"sink","source") ) %>% 
+  ggplot() +
+  geom_sf(aes(fill=class_emission), color="black",
+          size=.15, show.legend = TRUE)  +
+  scale_fill_manual(values = c("lightblue","red")) +
+    labs(title = "Balanço em 2022") +
+  geom_point(
+    data = dados %>%
+      filter(year == 2022
+             ),
+    aes(lon,lat, color = biome))
+```
+
+![](README_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
