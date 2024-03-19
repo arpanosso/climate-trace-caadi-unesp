@@ -62,3 +62,33 @@ dados <- map_df(
                           .x))
 )
 ```
+
+## Municipios `geobr`
+
+``` r
+city <- geobr::read_municipality(
+  showProgress = FALSE)
+```
+
+## Definindo os municípios do estado de São Paulo
+
+``` r
+sp_city <- city |> 
+  filter(abbrev_state == "SP")
+```
+
+## Estado de São Paulo
+
+``` r
+sp_city |> 
+  ggplot()  +
+  geom_sf(fill="white", color="black",
+          size=.15, show.legend = FALSE) +
+  geom_point(
+    data = dados %>%
+      filter(year == 2022
+             ),
+    aes(lon,lat, color = biome))
+```
+
+![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
