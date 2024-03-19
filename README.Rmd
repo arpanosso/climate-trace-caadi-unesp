@@ -50,14 +50,14 @@ city <- geobr::read_municipality(
 
 ## Definindo os municípios do estado de São Paulo
 ```{r}
-sp_city <- city |> 
+sp_city <- city %>%  
   filter(abbrev_state == "SP")
 ```
 
 ## Estado de São Paulo
 
 ```{r}
-sp_city |> 
+sp_city %>%  
   ggplot()  +
   geom_sf(fill="white", color="black",
           size=.15, show.legend = FALSE) +
@@ -66,5 +66,90 @@ sp_city |>
       filter(year == 2022
              ),
     aes(lon,lat, color = biome))
+```
+
+
+```{r}
+nomes_uf = "SP"
+dados %>% 
+  filter(
+         year == 2022,
+         gas == "co2e_100yr",
+         !source_name %in% nomes_uf,
+         !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals")
+         ) %>% 
+  group_by(sector_name) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  ) %>% 
+  arrange(emission)  %>% 
+  ungroup() %>% 
+  mutate(emisison_p = emission/sum(emission)*100)
+```
+
+
+```{r}
+dados %>% 
+  filter(
+    year == 2022,
+    gas == "co2e_100yr",
+    sector_name == "transportation",
+#    !source_name %in% nomes_uf,
+    !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals")
+     ) %>% 
+  group_by(source_id,source_name, sub_sector) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  ) %>% 
+  arrange(emission %>% desc()) %>% 
+  ungroup() %>% 
+  mutate(Acumulada = cumsum(emission)) %>% 
+  ggplot(aes(x=emission)) +
+  geom_histogram()
+```
+
+
+
+
+```{r}
+library(treemapify)
+dados %>% 
+  filter(
+         year == 2022,
+         gas == "co2e_100yr",
+         sector_name != "forestry_and_land_use",
+         !source_name %in% nomes_uf,
+         !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals")
+         ) %>% 
+  group_by(sector_name) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  ) %>% 
+  arrange(emission)  %>% 
+  ungroup() %>% 
+  mutate(emisison_p = emission/sum(emission)*100) %>% 
+  ggplot(aes(area = emisison_p, fill = sector_name)) +
+  geom_treemap() +
+  geom_treemap_text(
+    aes(label = paste(sector_name, 
+                      paste0(round(emisison_p, 2), "%"), sep = "\n")), 
+    colour = "white") +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d()
 ```
 

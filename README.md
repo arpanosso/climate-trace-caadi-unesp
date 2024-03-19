@@ -73,14 +73,14 @@ city <- geobr::read_municipality(
 ## Definindo os municípios do estado de São Paulo
 
 ``` r
-sp_city <- city |> 
+sp_city <- city %>%  
   filter(abbrev_state == "SP")
 ```
 
 ## Estado de São Paulo
 
 ``` r
-sp_city |> 
+sp_city %>%  
   ggplot()  +
   geom_sf(fill="white", color="black",
           size=.15, show.legend = FALSE) +
@@ -92,3 +92,97 @@ sp_city |>
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+``` r
+nomes_uf = "SP"
+dados %>% 
+  filter(
+         year == 2022,
+         gas == "co2e_100yr",
+         !source_name %in% nomes_uf,
+         !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals")
+         ) %>% 
+  group_by(sector_name) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  ) %>% 
+  arrange(emission)  %>% 
+  ungroup() %>% 
+  mutate(emisison_p = emission/sum(emission)*100)
+#> # A tibble: 7 × 3
+#>   sector_name               emission emisison_p
+#>   <chr>                        <dbl>      <dbl>
+#> 1 forestry_and_land_use  -156419904.    -149.  
+#> 2 power                     1668000        1.59
+#> 3 manufacturing             8317700        7.91
+#> 4 fossil_fuel_operations   10594440.      10.1 
+#> 5 waste                    11698932.      11.1 
+#> 6 transportation           54578954.      51.9 
+#> 7 agriculture             174667725.     166.
+```
+
+``` r
+dados %>% 
+  filter(
+    year == 2022,
+    gas == "co2e_100yr",
+    sector_name == "transportation",
+#    !source_name %in% nomes_uf,
+    !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals")
+     ) %>% 
+  group_by(source_id,source_name, sub_sector) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  ) %>% 
+  arrange(emission %>% desc()) %>% 
+  ungroup() %>% 
+  mutate(Acumulada = cumsum(emission)) %>% 
+  ggplot(aes(x=emission)) +
+  geom_histogram()
+```
+
+![](README_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+``` r
+library(treemapify)
+dados %>% 
+  filter(
+         year == 2022,
+         gas == "co2e_100yr",
+         sector_name != "forestry_and_land_use",
+         !source_name %in% nomes_uf,
+         !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals")
+         ) %>% 
+  group_by(sector_name) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  ) %>% 
+  arrange(emission)  %>% 
+  ungroup() %>% 
+  mutate(emisison_p = emission/sum(emission)*100) %>% 
+  ggplot(aes(area = emisison_p, fill = sector_name)) +
+  geom_treemap() +
+  geom_treemap_text(
+    aes(label = paste(sector_name, 
+                      paste0(round(emisison_p, 2), "%"), sep = "\n")), 
+    colour = "white") +
+  theme(legend.position = "none") +
+  scale_fill_viridis_d()
+```
+
+![](README_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
