@@ -130,35 +130,6 @@ dados %>%
 ```
 
 ``` r
-dados %>% 
-  filter(created_date < as.Date("2024-01-01"),
-         year == 2022,
-         gas == "co2e_100yr",
-         !source_name %in% nomes_uf,
-         !sub_sector %in% c("forest-land-clearing",
-                            "forest-land-degradation",
-                            "shrubgrass-fires",
-                            "forest-land-fires",
-                            "wetland-fires",
-                            "removals"),
-         sector_name != "forestry_and_land_use",
-         #sub_sector == "international-aviation"
-         #source_name == "Guarulhos - Governador André Franco Montoro International Airport"
-         )  %>% 
-  group_by(source_id,source_name, sub_sector) %>% 
-  summarise(
-    emission = sum(emissions_quantity, na.rm=TRUE)
-  ) %>% 
-  arrange(emission %>% desc()) %>% 
-  ungroup() %>% 
-  mutate(Acumulada = cumsum(emission)) %>% 
-  ggplot(aes(x=emission)) +
-  geom_histogram()
-```
-
-![](README_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
-
-``` r
 library(treemapify)
 dados %>% 
   filter(created_date < as.Date("2024-01-01"),
@@ -192,7 +163,7 @@ dados %>%
   scale_fill_viridis_d()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ``` r
 dd <- dados %>% 
@@ -205,16 +176,13 @@ dd <- dados %>%
                             "shrubgrass-fires",
                             "forest-land-fires",
                             "wetland-fires",
-                            "removals"),
-         # sector_name != "forestry_and_land_use",
-         #sub_sector == "international-aviation"
-         #source_name == "Guarulhos - Governador André Franco Montoro International Airport"
+                            "removals")
          )  %>% 
-  # group_by(city_ref,sector_name,sub_sector) %>% 
   group_by(city_ref) %>% 
   summarise(
     emission = sum(emissions_quantity, na.rm=TRUE)
   )
+
 sp_city %>% 
   inner_join( dd %>% 
     rename(name_muni = city_ref),
@@ -233,4 +201,137 @@ sp_city %>%
     aes(lon,lat, color = biome))
 ```
 
+![](README_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
+cores <- c("#00A087FF", "#4DBBD5FF", "#E64B35FF", "#3C5488FF",
+           "#F39B7FFF", "#8491B4FF",
+           "#91D1C2FF", "#DC0000FF", "#7E6148FF", "#B09C85FF")
+
+max_sector_find <- function(df){
+  sn <- df %>% pull(sector_name)
+  em <- df %>% pull(emission)
+  re <- sn[which.max(em)]
+  return(re)
+}
+
+d <- dados %>% 
+  filter(created_date < as.Date("2024-01-01"),
+         year == 2022,
+         gas == "co2e_100yr",
+         !source_name %in% nomes_uf,
+         !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals"),
+         #emissions_quantity > 0
+         ) %>% 
+  group_by(city_ref,sector_name) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  ) %>% 
+  nest() %>% 
+  mutate(
+    max_sector = map(data,max_sector_find)
+  ) %>% 
+  select(city_ref, max_sector) %>% 
+  ungroup() %>% 
+  unnest()
+
+sp_city %>% 
+  inner_join( d %>% 
+    rename(name_muni = city_ref),
+    by="name_muni"
+  ) %>% 
+  ggplot() +
+  geom_sf(aes(fill=max_sector), color="black",
+          size=.15, show.legend = TRUE)  +
+  scale_fill_manual(values = cores[-(6:8)]) +
+    labs(title = "Maiores setores emissores em 2022") 
+```
+
 ![](README_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+``` r
+min_sector_find <- function(df){
+  sn <- df %>% pull(sector_name)
+  em <- df %>% pull(emission)
+  re <- sn[which.min(em)]
+  return(re)
+}
+
+ddd <- dados %>% 
+  filter(created_date < as.Date("2024-01-01"),
+         year == 2022,
+         gas == "co2e_100yr",
+         !source_name %in% nomes_uf,
+         !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals"),
+         #emissions_quantity < 0
+         ) %>% 
+  group_by(city_ref,sector_name) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  ) %>% 
+  nest() %>% 
+  mutate(
+    min_sector = map(data,min_sector_find)
+  ) %>% 
+  select(city_ref, min_sector) %>% 
+  ungroup() %>% 
+  unnest()
+
+sp_city %>% 
+  inner_join( ddd %>% 
+    rename(name_muni = city_ref),
+    by="name_muni"
+  ) %>% 
+  ggplot() +
+  geom_sf(aes(fill=min_sector), color="black",
+          size=.15, show.legend = TRUE)  +
+  scale_fill_manual(values = cores[c(1,2,5,10)]) +
+    labs(title = "Menores setores emissores em 2022") 
+```
+
+![](README_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+``` r
+dados %>% 
+  filter(created_date < as.Date("2024-01-01"),
+         year == 2022,
+         gas == "co2e_100yr",
+         !source_name %in% nomes_uf,
+         !sub_sector %in% c("forest-land-clearing",
+                            "forest-land-degradation",
+                            "shrubgrass-fires",
+                            "forest-land-fires",
+                            "wetland-fires",
+                            "removals"),
+         sector_name != "forestry_and_land_use"
+         ) %>% 
+  group_by(city_ref,sector_name) %>% 
+  summarise(
+    emission = sum(emissions_quantity, na.rm=TRUE)
+  )  %>% 
+  group_by(city_ref) %>% 
+  mutate(
+    n_emission = sum(emission, na.rm=TRUE),
+  )  %>% 
+  ungroup() %>% 
+  mutate(city_ref = city_ref %>% 
+           fct_lump(n=30,w=n_emission) %>% 
+           fct_reorder(n_emission)) %>% 
+  filter(city_ref != "Other") %>% 
+  ggplot(aes(x=city_ref, y=emission, fill=sector_name)) +
+  geom_col(color="black") +
+  coord_flip() +
+  theme_bw()
+```
+
+![](README_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
