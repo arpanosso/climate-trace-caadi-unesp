@@ -109,24 +109,31 @@ dados %>%
                             "removals"),
          sector_name != "forestry_and_land_use",
          #sub_sector == "international-aviation"
-         #source_name == "Guarulhos - Governador André Franco Montoro International Airport"
+         city_ref == "Barretos"
          ) %>% 
-  group_by(sector_name) %>% 
+  group_by(source_name) %>% 
   summarise(
     emission = sum(emissions_quantity, na.rm=TRUE)
   ) %>% 
   arrange(desc(emission))  %>% 
   ungroup() %>% 
   mutate(emisison_acumulada = cumsum(emission))
-#> # A tibble: 6 × 3
-#>   sector_name             emission emisison_acumulada
-#>   <chr>                      <dbl>              <dbl>
-#> 1 agriculture            87547042.          87547042.
-#> 2 transportation         46802229.         134349271.
-#> 3 waste                  11698932.         146048203.
-#> 4 fossil_fuel_operations 10594440.         156642643.
-#> 5 manufacturing           8317700          164960343.
-#> 6 power                   1668000          166628343.
+#> # A tibble: 13 × 3
+#>    source_name                                  emission emisison_acumulada
+#>    <chr>                                           <dbl>              <dbl>
+#>  1 Barretos                                     707278.             707278.
+#>  2 Barretos Urban Area in Barretos Municipality 149011.             856289.
+#>  3 BRA_beef_236                                  26749.             883038.
+#>  4 BRA_beef_235                                   8658.             891695.
+#>  5 BRA_beef_237                                   5553.             897249.
+#>  6 ETE 3   BURACAO                                4004.             901253.
+#>  7 BRA_beef_238                                   3220.             904472.
+#>  8 ETE 1   BARRETOS 2                             1560.             906033.
+#>  9 ETE 2   DAMA                                    919.             906951.
+#> 10 ETE 4   ESTRADA DA VENDINHA                     919.             907870.
+#> 11 ETE   5 DISTRITO INDUSTRIAL                     325.             908195.
+#> 12 ETE   6 ALBERTO MOREIRA                          45.5            908241.
+#> 13 Chafei Amsei Airport                              0              908241.
 ```
 
 ``` r

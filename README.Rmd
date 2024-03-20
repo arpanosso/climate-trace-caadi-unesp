@@ -85,9 +85,9 @@ dados %>%
                             "removals"),
          sector_name != "forestry_and_land_use",
          #sub_sector == "international-aviation"
-         #source_name == "Guarulhos - Governador André Franco Montoro International Airport"
+         city_ref == "Barretos"
          ) %>% 
-  group_by(sector_name) %>% 
+  group_by(source_name) %>% 
   summarise(
     emission = sum(emissions_quantity, na.rm=TRUE)
   ) %>% 
